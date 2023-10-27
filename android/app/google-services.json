@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "160008307714",
+    "project_id": "tdm2023-2-b7953",
+    "storage_bucket": "tdm2023-2-b7953.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:160008307714:android:6894255f4a8b0d0468131b",
+        "android_client_info": {
+          "package_name": "com.example.appchat"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC4t9b1k2tc88g3_zwxf6YLbkbO5-qxf3A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
