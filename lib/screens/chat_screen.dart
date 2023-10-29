@@ -32,7 +32,16 @@ class ChatScreenState extends State<ChatScreen>{
   Widget build(BuildContext context) {
       return Scaffold(
         appBar: AppBar(
-          title: Text("Chat App"),
+          title: Text( _currentUser != null ? 'Olá, ${_currentUser?.displayName}' : 'Chat App'),
+          actions: <Widget>[
+            _currentUser != null ?
+                IconButton(onPressed: (){
+                  FirebaseAuth.instance.signOut();
+                  FacebookAuth.instance.logOut();
+                 const snackBar = SnackBar(content: Text("Deslogando..."), backgroundColor: Colors.red);
+                 ScaffoldMessenger.of(context).showSnackBar(snackBar);
+                }, icon: Icon(Icons.exit_to_app)) : Container()
+        ],
         ),
         body:
         Column(
@@ -80,14 +89,24 @@ class ChatScreenState extends State<ChatScreen>{
 
 
   void _sendMessage({String? text, XFile? imgFile}) async {
-
+    String id = "";
     User? user = await _getUser(context: context);
 
+    if (user == null) {
+      const snackBar = SnackBar(content: Text("Não foi possível fazer o login"), backgroundColor: Colors.red);
+      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      return;
+    }
 
     Map<String, dynamic> data = {
       'url' : "",
       'time' : Timestamp.now(),
+      'uid' : user?.displayName,
+      'senderPhotoUrl' : user?.photoURL
     };
+
+    if (user != null)
+      id = user.uid;
 
     if (imgFile != null){
       firebase_storage.UploadTask uploadTask;
@@ -95,7 +114,7 @@ class ChatScreenState extends State<ChatScreen>{
           firebase_storage.FirebaseStorage.instance
       .ref()
       .child("imgs")
-      .child(DateTime.now().millisecondsSinceEpoch.toString());
+          .child(id + DateTime.now().millisecondsSinceEpoch.toString());
       final metadados = firebase_storage.SettableMetadata(
         contentType: "image/jpeg",
         customMetadata: {"picked-file-path" : imgFile.path}
@@ -143,5 +162,15 @@ class ChatScreenState extends State<ChatScreen>{
     print("Usuário do facebook: " + user!.displayName.toString());
 
     return user;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    FirebaseAuth.instance.authStateChanges().listen((user) {
+      setState(() {
+        _currentUser = user;
+      });
+    });
   }
 }
