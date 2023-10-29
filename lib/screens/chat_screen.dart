@@ -1,3 +1,4 @@
+import 'package:appchat/screens/text_message.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'text_composer.dart';
@@ -6,7 +7,6 @@ import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 
 class ChatScreen extends StatefulWidget{
@@ -18,7 +18,6 @@ class ChatScreen extends StatefulWidget{
 
 class ChatScreenState extends State<ChatScreen>{
 
-  final GoogleSignIn googleSignIn = GoogleSignIn();
   User? _currentUser;
   FirebaseAuth auth = FirebaseAuth.instance;
   final GlobalKey<ScaffoldState> _scaffoldkey = GlobalKey<ScaffoldState>();
@@ -38,7 +37,8 @@ class ChatScreenState extends State<ChatScreen>{
                 IconButton(onPressed: (){
                   FirebaseAuth.instance.signOut();
                   FacebookAuth.instance.logOut();
-                 const snackBar = SnackBar(content: Text("Deslogando..."), backgroundColor: Colors.red);
+                 const snackBar = SnackBar(content: Text("Deslogando..."),
+                     backgroundColor: Colors.red);
                  ScaffoldMessenger.of(context).showSnackBar(snackBar);
                 }, icon: Icon(Icons.exit_to_app)) : Container()
         ],
@@ -59,24 +59,8 @@ class ChatScreenState extends State<ChatScreen>{
                         itemCount: documents.length,
                         reverse: true,
                         itemBuilder: (context, index){
-                          return Container(
-                            margin: const EdgeInsets.symmetric(
-                              vertical: 10, horizontal: 10
-                            ),
-                            child: Row(
-                              children: <Widget> [
-                                Expanded(child: Column(
-                                  children: <Widget>[
-                                    documents[index].get('url') != ""
-                                    ? Image.network(documents[index].get('url'),
-                                        width: 150)
-                                        : Text(documents[index].get('text'),
-                                    style: TextStyle(fontSize: 16),)
-                                  ],
-                                ))
-                              ],
-                            ),
-                          );
+                          return TextMessage(documents[index],
+                          documents[index].get('uid') == _currentUser?.uid);
                         });
                 }
               },
@@ -101,7 +85,8 @@ class ChatScreenState extends State<ChatScreen>{
     Map<String, dynamic> data = {
       'url' : "",
       'time' : Timestamp.now(),
-      'uid' : user?.displayName,
+      'uid' : user?.uid,
+      'senderName' : user?.displayName,
       'senderPhotoUrl' : user?.photoURL
     };
 
