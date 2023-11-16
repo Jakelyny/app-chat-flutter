@@ -7,84 +7,89 @@ import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import '';
 
-class ChatScreen extends StatefulWidget{
+class ChatScreen extends StatefulWidget {
   @override
   State<StatefulWidget> createState() {
-      return ChatScreenState();
+    return ChatScreenState();
   }
 }
 
-class ChatScreenState extends State<ChatScreen>{
-
+class ChatScreenState extends State<ChatScreen> {
+  final GoogleSignIn googleSignIn = GoogleSignIn();
   User? _currentUser;
   FirebaseAuth auth = FirebaseAuth.instance;
-  final GlobalKey<ScaffoldState> _scaffoldkey = GlobalKey<ScaffoldState>();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   bool _isLoading = false;
 
   final CollectionReference _mensagens =
-  FirebaseFirestore.instance.collection("mensagens");
+      FirebaseFirestore.instance.collection("mensagens");
 
   @override
   Widget build(BuildContext context) {
-      return Scaffold(
+    return Scaffold(
         appBar: AppBar(
-          title: Text( _currentUser != null ? 'Olá, ${_currentUser?.displayName}' : 'Chat App'),
+          title: Text( _currentUser != null
+              ? 'Olá, ${_currentUser?.displayName}'
+              : 'Chat App'),
           actions: <Widget>[
             _currentUser != null ?
                 IconButton(onPressed: (){
                   FirebaseAuth.instance.signOut();
-                  FacebookAuth.instance.logOut();
-                 const snackBar = SnackBar(content: Text("Deslogando..."),
-                     backgroundColor: Colors.red);
-                 ScaffoldMessenger.of(context).showSnackBar(snackBar);
-                }, icon: Icon(Icons.exit_to_app)) : Container()
-        ],
+                  googleSignIn.signOut();
+                  const snackBar = SnackBar(content: Text("Logout"),
+                      backgroundColor: Colors.red);
+                  ScaffoldMessenger.of(context).showSnackBar(snackBar);
+                },
+                    icon: Icon(Icons.exit_to_app))
+                :  Container()
+          ],
         ),
-        body:
-        Column(
+        body: Column(
           children: <Widget>[
-            Expanded(child: StreamBuilder<QuerySnapshot>(
+            Expanded(
+                child: StreamBuilder<QuerySnapshot>(
               stream: _mensagens.orderBy("time").snapshots(),
-              builder: (context, snapshot){
-                switch (snapshot.connectionState){
+              builder: (context, snapshot) {
+                switch (snapshot.connectionState) {
                   case ConnectionState.waiting:
                     return Center(child: CircularProgressIndicator());
-                  default :
+                  default:
                     List<DocumentSnapshot> documents =
                         snapshot.data!.docs.reversed.toList();
                     return ListView.builder(
                         itemCount: documents.length,
                         reverse: true,
-                        itemBuilder: (context, index){
+                        itemBuilder: (context, index) {
                           return TextMessage(documents[index],
-                          documents[index].get('uid') == _currentUser?.uid);
+                          documents[index].get('uid')  == _currentUser?.uid);
                         });
                 }
               },
             )),
+            _isLoading ? LinearProgressIndicator() : Container(),
             TextComposer(_sendMessage),
           ],
-        )
-      );
+        ));
   }
-
 
   void _sendMessage({String? text, XFile? imgFile}) async {
     String id = "";
     User? user = await _getUser(context: context);
 
-    if (user == null) {
-      const snackBar = SnackBar(content: Text("Não foi possível fazer o login"), backgroundColor: Colors.red);
+    if (user == null){
+      const snackBar = SnackBar(content: Text("Não foi possível fazer login"),
+         backgroundColor: Colors.red);
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
       return;
     }
 
     Map<String, dynamic> data = {
-      'url' : "",
-      'time' : Timestamp.now(),
+      'url': "",
+      'time': Timestamp.now(),
       'uid' : user?.uid,
       'senderName' : user?.displayName,
       'senderPhotoUrl' : user?.photoURL
@@ -93,59 +98,68 @@ class ChatScreenState extends State<ChatScreen>{
     if (user != null)
       id = user.uid;
 
-    if (imgFile != null){
+    if (imgFile != null) {
+      setState(() {
+        _isLoading = true;
+      });
       firebase_storage.UploadTask uploadTask;
-      firebase_storage.Reference ref =
-          firebase_storage.FirebaseStorage.instance
-      .ref()
-      .child("imgs")
+      firebase_storage.Reference ref = firebase_storage.FirebaseStorage.instance
+          .ref()
+          .child("imgs")
           .child(id + DateTime.now().millisecondsSinceEpoch.toString());
       final metadados = firebase_storage.SettableMetadata(
-        contentType: "image/jpeg",
-        customMetadata: {"picked-file-path" : imgFile.path}
-      );
-      if (kIsWeb){
+          contentType: "image/jpeg",
+          customMetadata: {"picked-file-path": imgFile.path});
+      if (kIsWeb) {
         uploadTask = ref.putData(await imgFile.readAsBytes(), metadados);
-      }else{
+      } else {
         uploadTask = ref.putFile(File(imgFile.path));
       }
       var taskSnapshot = await uploadTask;
       String imageUrl = "";
       imageUrl = await taskSnapshot.ref.getDownloadURL();
       data['url'] = imageUrl;
-    }else {
+    } else {
       data["text"] = text;
     }
+    setState(() {
+      _isLoading = false;
+    });
     _mensagens.add(data);
   }
 
   Future<User?> _getUser({required BuildContext context}) async {
     User? user;
-
-    // Existe um usuário logado?
-    if (_currentUser != null)
-      return _currentUser;
-    if (kIsWeb) { // Se for WEB
-      FacebookAuthProvider authProvider = FacebookAuthProvider();
-      try{
-        final UserCredential userCredential = await auth.signInWithPopup(authProvider);
-
+    if (_currentUser != null) return _currentUser;
+    if (kIsWeb) {
+      //WEB
+      GoogleAuthProvider authProvider = GoogleAuthProvider();
+      try {
+        final UserCredential userCredential =
+            await auth.signInWithPopup(authProvider);
         user = userCredential.user;
       } catch (e) {
         print(e);
       }
-    } else { // Se for ANDROID
-      final LoginResult loginResult = await FacebookAuth.instance.login();
-      // Credenciais de autenticação do Facebook
-      final OAuthCredential facebookAuthCredential = FacebookAuthProvider.credential(loginResult.accessToken!.token);
-      UserCredential userR =  await FirebaseAuth.instance.signInWithCredential(facebookAuthCredential);
+    } else {
+      //ANDROID
+      final GoogleSignInAccount? googleSignInAccount =
+          await googleSignIn.signIn();
+      if (googleSignInAccount != null) {
+        final GoogleSignInAuthentication googleSignInAuthentication =
+            await googleSignInAccount.authentication;
 
-      user = userR.user;
+        final AuthCredential credential = GoogleAuthProvider.credential(
+            accessToken: googleSignInAuthentication.accessToken,
+            idToken: googleSignInAuthentication.idToken);
+        try {
+          final UserCredential userCredential =
+              await auth.signInWithCredential(credential);
+          user = userCredential.user;
+        } catch (e) { print(e); }
+      }
     }
-
-    _currentUser = user;
-    print("Usuário do facebook: " + user!.displayName.toString());
-
+    print("user logado: " + user!.displayName.toString());
     return user;
   }
 
