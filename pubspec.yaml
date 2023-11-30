@@ -41,6 +41,7 @@ dependencies:
   flutter_web_auth:
   flutter_facebook_auth:
   google_maps_flutter: ^2.5.0
+  flutter_google_places: ^0.3.0
   geolocator: ^10.1.0
   geocoding_resolver: ^0.0.3+2
   firebase_messaging: ^14.4.0

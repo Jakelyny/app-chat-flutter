@@ -8,7 +8,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import '';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 class ChatScreen extends StatefulWidget {
   @override
@@ -26,50 +26,49 @@ class ChatScreenState extends State<ChatScreen> {
   bool _isLoading = false;
 
   final CollectionReference _mensagens =
-      FirebaseFirestore.instance.collection("mensagens");
+  FirebaseFirestore.instance.collection("mensagens");
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-          title: Text( _currentUser != null
+          title: Text(_currentUser != null
               ? 'Olá, ${_currentUser?.displayName}'
               : 'Chat App'),
           actions: <Widget>[
-            _currentUser != null ?
-                IconButton(onPressed: (){
+            _currentUser != null
+                ? IconButton(
+                onPressed: () {
                   FirebaseAuth.instance.signOut();
                   googleSignIn.signOut();
-                  const snackBar = SnackBar(content: Text("Logout"),
-                      backgroundColor: Colors.red);
+                  const snackBar = SnackBar(content: Text("Logout"), backgroundColor: Colors.red,);
                   ScaffoldMessenger.of(context).showSnackBar(snackBar);
                 },
-                    icon: Icon(Icons.exit_to_app))
-                :  Container()
+                icon: Icon(Icons.exit_to_app))
+                : Container()
           ],
         ),
         body: Column(
           children: <Widget>[
             Expanded(
                 child: StreamBuilder<QuerySnapshot>(
-              stream: _mensagens.orderBy("time").snapshots(),
-              builder: (context, snapshot) {
-                switch (snapshot.connectionState) {
-                  case ConnectionState.waiting:
-                    return Center(child: CircularProgressIndicator());
-                  default:
-                    List<DocumentSnapshot> documents =
+                  stream: _mensagens.orderBy("time").snapshots(),
+                  builder: (context, snapshot) {
+                    switch (snapshot.connectionState) {
+                      case ConnectionState.waiting:
+                        return Center(child: CircularProgressIndicator());
+                      default:
+                        List<DocumentSnapshot> documents =
                         snapshot.data!.docs.reversed.toList();
-                    return ListView.builder(
-                        itemCount: documents.length,
-                        reverse: true,
-                        itemBuilder: (context, index) {
-                          return TextMessage(documents[index],
-                          documents[index].get('uid')  == _currentUser?.uid);
-                        });
-                }
-              },
-            )),
+                        return ListView.builder(
+                            itemCount: documents.length,
+                            reverse: true,
+                            itemBuilder: (context, index) {
+                              return TextMessage(documents[index], documents[index].get('uid') == _currentUser?.uid);
+                            });
+                    }
+                  },
+                )),
             _isLoading ? LinearProgressIndicator() : Container(),
             TextComposer(_sendMessage),
           ],
@@ -77,12 +76,14 @@ class ChatScreenState extends State<ChatScreen> {
   }
 
   void _sendMessage({String? text, XFile? imgFile}) async {
-    String id = "";
     User? user = await _getUser(context: context);
+    String id = "";
 
-    if (user == null){
-      const snackBar = SnackBar(content: Text("Não foi possível fazer login"),
-         backgroundColor: Colors.red);
+    if (user == null) {
+      const snackBar = SnackBar(
+        content: Text("Não foi possível fazer login!"),
+        backgroundColor: Colors.red,
+      );
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
       return;
     }
@@ -90,13 +91,14 @@ class ChatScreenState extends State<ChatScreen> {
     Map<String, dynamic> data = {
       'url': "",
       'time': Timestamp.now(),
-      'uid' : user?.uid,
-      'senderName' : user?.displayName,
-      'senderPhotoUrl' : user?.photoURL
+      'uid': user?.uid,
+      'senderName': user?.displayName,
+      'senderPhotoUrl': user?.photoURL
     };
 
-    if (user != null)
+    if (user != null) {
       id = user.uid;
+    }
 
     if (imgFile != null) {
       setState(() {
@@ -122,6 +124,7 @@ class ChatScreenState extends State<ChatScreen> {
     } else {
       data["text"] = text;
     }
+
     setState(() {
       _isLoading = false;
     });
@@ -136,7 +139,7 @@ class ChatScreenState extends State<ChatScreen> {
       GoogleAuthProvider authProvider = GoogleAuthProvider();
       try {
         final UserCredential userCredential =
-            await auth.signInWithPopup(authProvider);
+        await auth.signInWithPopup(authProvider);
         user = userCredential.user;
       } catch (e) {
         print(e);
@@ -144,23 +147,41 @@ class ChatScreenState extends State<ChatScreen> {
     } else {
       //ANDROID
       final GoogleSignInAccount? googleSignInAccount =
-          await googleSignIn.signIn();
+      await googleSignIn.signIn();
       if (googleSignInAccount != null) {
         final GoogleSignInAuthentication googleSignInAuthentication =
-            await googleSignInAccount.authentication;
+        await googleSignInAccount.authentication;
 
         final AuthCredential credential = GoogleAuthProvider.credential(
             accessToken: googleSignInAuthentication.accessToken,
             idToken: googleSignInAuthentication.idToken);
         try {
           final UserCredential userCredential =
-              await auth.signInWithCredential(credential);
+          await auth.signInWithCredential(credential);
           user = userCredential.user;
-        } catch (e) { print(e); }
+        } catch (e) {
+          print(e);
+        }
       }
     }
     print("user logado: " + user!.displayName.toString());
     return user;
+  }
+
+  void login() async{
+    await _getUser(context: context);
+    setupPushNotifications();
+  }
+
+  void setupPushNotifications() async {
+    final CollectionReference _token = FirebaseFirestore.instance.collection("token");
+    final fcm = FirebaseMessaging.instance;
+    await fcm.requestPermission();
+    final token = await fcm.getToken();
+    print("Token");
+    print(token);
+    _token.add({"token": token});
+    // fcm.subscribeToTopic('chat');
   }
 
   @override
@@ -171,5 +192,6 @@ class ChatScreenState extends State<ChatScreen> {
         _currentUser = user;
       });
     });
+    login();
   }
 }
