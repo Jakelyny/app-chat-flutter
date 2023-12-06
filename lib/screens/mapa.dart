@@ -32,10 +32,20 @@ class MapSampleState extends State<MapSample> {
   TextEditingController _nomeController = TextEditingController();
   TextEditingController _descricaoController = TextEditingController();
 
+  //@override
+  //void initState() {
+  //  super.initState();
+  //  _carregarMarcadores();
+  //}
+
   @override
   void initState() {
     super.initState();
-    _carregarMarcadores();
+    if (widget.idLocal != null){
+      mostrarLocal(widget.idLocal);
+    }else {
+      _carregarMarcadores();
+    }
   }
 
   _carregarMarcadores() async {
@@ -186,19 +196,14 @@ class MapSampleState extends State<MapSample> {
     String titulo = local.get("titulo");
     String descricao = local.get("descricao");
     LatLng latLng = LatLng(local.get('latitude'), local.get('longitude'));
-    setState(() {
-      Marker marcador = Marker(
-        markerId:
-        MarkerId("marcador-${latLng.latitude}-${latLng.longitude}"),
-        position: latLng,
-        infoWindow: InfoWindow(
-          title: titulo,
-          snippet: descricao,
-        ),
-      );
-      _marcadores.add(marcador);
-      _posicaoCamera = CameraPosition(target: latLng, zoom: 15);
-      _movimentarCamera();
-    });
+
+    // Mover a câmera para o marcador selecionado
+    CameraPosition newPosition = CameraPosition(target: latLng, zoom: 15);
+    final GoogleMapController controller = await _controller.future;
+    controller.animateCamera(CameraUpdate.newCameraPosition(newPosition));
+
+    // Adicionar todos os marcadores à lista
+    _carregarMarcadores();
   }
+
 }
