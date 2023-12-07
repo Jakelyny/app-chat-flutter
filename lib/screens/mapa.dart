@@ -14,6 +14,7 @@ class MapSample extends StatefulWidget {
   State<MapSample> createState() => MapSampleState();
 }
 
+
 class MapSampleState extends State<MapSample> {
   final Completer<GoogleMapController> _controller =
   Completer<GoogleMapController>();
@@ -29,47 +30,10 @@ class MapSampleState extends State<MapSample> {
     zoom: 15,
   );
 
+
   TextEditingController _nomeController = TextEditingController();
   TextEditingController _descricaoController = TextEditingController();
 
-  //@override
-  //void initState() {
-  //  super.initState();
-  //  _carregarMarcadores();
-  //}
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.idLocal != null){
-      mostrarLocal(widget.idLocal);
-    }else {
-      _carregarMarcadores();
-    }
-  }
-
-  _carregarMarcadores() async {
-    QuerySnapshot querySnapshot = await _locais.get();
-    querySnapshot.docs.forEach((doc) {
-      double latitude = doc.get('latitude');
-      double longitude = doc.get('longitude');
-      String titulo = doc.get('titulo');
-      String descricao = doc.get('descricao');
-
-      LatLng latLng = LatLng(latitude, longitude);
-      Marker marcador = Marker(
-        markerId: MarkerId("marcador-$latitude-$longitude"),
-        position: latLng,
-        infoWindow: InfoWindow(
-          title: titulo,
-          snippet: descricao,
-        ),
-      );
-      setState(() {
-        _marcadores.add(marcador);
-      });
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -90,10 +54,6 @@ class MapSampleState extends State<MapSample> {
     );
   }
 
-  _limparCampos() {
-    _nomeController.clear();
-    _descricaoController.clear();
-  }
 
   _movimentarCamera() async {
     final GoogleMapController controller = await _controller.future;
@@ -101,21 +61,28 @@ class MapSampleState extends State<MapSample> {
         CameraUpdate.newCameraPosition(_posicaoCamera));
   }
 
+
   getLocation() async {
     LocationPermission permission = await Geolocator.checkPermission();
+    print("permissão: " + permission.toString());
     if (permission == LocationPermission.denied) {
+      print("pedindo permissão");
       await Geolocator.requestPermission();
       permission = await Geolocator.checkPermission();
     }
+
     if (permission == LocationPermission.deniedForever) {
+      print("abrindo config");
       await Geolocator.openLocationSettings();
       permission = await Geolocator.checkPermission();
     }
 
     if (permission == LocationPermission.always ||
         permission == LocationPermission.whileInUse) {
+      print("entrou " );
       final position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high);
+      print("posição: " + position.latitude.toString());
       _posicaoCamera = CameraPosition(
         target: LatLng(position.latitude, position.longitude),
         zoom: 15,
@@ -123,6 +90,18 @@ class MapSampleState extends State<MapSample> {
       _movimentarCamera();
     }
   }
+
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.idLocal != null){
+      mostrarLocal(widget.idLocal);
+    }else {
+      _carregarMarcadores();
+    }
+  }
+
 
   _addMarcador(LatLng latLng) async {
     Address address = await geoCoder.getAddressFromLatLng(
@@ -168,6 +147,37 @@ class MapSampleState extends State<MapSample> {
     );
   }
 
+
+  _carregarMarcadores() async {
+    QuerySnapshot querySnapshot = await _locais.get();
+    querySnapshot.docs.forEach((doc) {
+      double latitude = doc.get('latitude');
+      double longitude = doc.get('longitude');
+      String titulo = doc.get('titulo');
+      String descricao = doc.get('descricao');
+
+      LatLng latLng = LatLng(latitude, longitude);
+      Marker marcador = Marker(
+        markerId: MarkerId("marcador-$latitude-$longitude"),
+        position: latLng,
+        infoWindow: InfoWindow(
+          title: titulo,
+          snippet: descricao,
+        ),
+      );
+      setState(() {
+        _marcadores.add(marcador);
+      });
+    });
+  }
+
+
+  _limparCampos() {
+    _nomeController.clear();
+    _descricaoController.clear();
+  }
+
+
   _registrarMarcador(
       LatLng latLng, String nomeLocal, String descricaoLocal) async {
     Marker marcador = Marker(
@@ -191,6 +201,7 @@ class MapSampleState extends State<MapSample> {
     _locais.add(local);
   }
 
+
   mostrarLocal(String? idLocal) async {
     DocumentSnapshot local = await _locais.doc(idLocal).get();
     String titulo = local.get("titulo");
@@ -205,5 +216,4 @@ class MapSampleState extends State<MapSample> {
     // Adicionar todos os marcadores à lista
     _carregarMarcadores();
   }
-
 }
