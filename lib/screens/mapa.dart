@@ -208,12 +208,12 @@ class MapSampleState extends State<MapSample> {
     String descricao = local.get("descricao");
     LatLng latLng = LatLng(local.get('latitude'), local.get('longitude'));
 
-    // Mover a câmera para o marcador selecionado
+    // Mover ao marcador selecionado
     CameraPosition newPosition = CameraPosition(target: latLng, zoom: 15);
     final GoogleMapController controller = await _controller.future;
     controller.animateCamera(CameraUpdate.newCameraPosition(newPosition));
 
-    // Adicionar todos os marcadores à lista
+    // Todos os marcadores
     _carregarMarcadores();
   }
 }
