@@ -14,13 +14,12 @@ class MapSample extends StatefulWidget {
   State<MapSample> createState() => MapSampleState();
 }
 
-
 class MapSampleState extends State<MapSample> {
   final Completer<GoogleMapController> _controller =
-  Completer<GoogleMapController>();
+      Completer<GoogleMapController>();
 
   final CollectionReference _locais =
-  FirebaseFirestore.instance.collection("locais");
+      FirebaseFirestore.instance.collection("locais");
 
   GeoCoder geoCoder = GeoCoder();
   Set<Marker> _marcadores = {};
@@ -30,10 +29,8 @@ class MapSampleState extends State<MapSample> {
     zoom: 15,
   );
 
-
   TextEditingController _nomeController = TextEditingController();
   TextEditingController _descricaoController = TextEditingController();
-
 
   @override
   Widget build(BuildContext context) {
@@ -54,13 +51,11 @@ class MapSampleState extends State<MapSample> {
     );
   }
 
-
   _movimentarCamera() async {
     final GoogleMapController controller = await _controller.future;
-    await controller.animateCamera(
-        CameraUpdate.newCameraPosition(_posicaoCamera));
+    await controller
+        .animateCamera(CameraUpdate.newCameraPosition(_posicaoCamera));
   }
-
 
   getLocation() async {
     LocationPermission permission = await Geolocator.checkPermission();
@@ -79,7 +74,7 @@ class MapSampleState extends State<MapSample> {
 
     if (permission == LocationPermission.always ||
         permission == LocationPermission.whileInUse) {
-      print("entrou " );
+      print("entrou ");
       final position = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high);
       print("posição: " + position.latitude.toString());
@@ -91,17 +86,15 @@ class MapSampleState extends State<MapSample> {
     }
   }
 
-
   @override
   void initState() {
     super.initState();
-    if (widget.idLocal != null){
+    if (widget.idLocal != null) {
       mostrarLocal(widget.idLocal);
-    }else {
+    } else {
       _carregarMarcadores();
     }
   }
-
 
   _addMarcador(LatLng latLng) async {
     Address address = await geoCoder.getAddressFromLatLng(
@@ -147,6 +140,27 @@ class MapSampleState extends State<MapSample> {
     );
   }
 
+  _registrarMarcador(LatLng latLng, String nomeLocal, String descricaoLocal) async {
+    Marker marcador = Marker(
+      markerId: MarkerId("marcador-${latLng.latitude}-${latLng.longitude}"),
+      position: latLng,
+      infoWindow: InfoWindow(
+        title: nomeLocal,
+        snippet: descricaoLocal,
+      ),
+    );
+    setState(() {
+      _marcadores.add(marcador);
+    });
+
+    // Gravar no Firestore
+    Map<String, dynamic> local = Map();
+    local['titulo'] = nomeLocal;
+    local['descricao'] = descricaoLocal;
+    local['latitude'] = latLng.latitude;
+    local['longitude'] = latLng.longitude;
+    _locais.add(local);
+  }
 
   _carregarMarcadores() async {
     QuerySnapshot querySnapshot = await _locais.get();
@@ -171,36 +185,10 @@ class MapSampleState extends State<MapSample> {
     });
   }
 
-
   _limparCampos() {
     _nomeController.clear();
     _descricaoController.clear();
   }
-
-
-  _registrarMarcador(
-      LatLng latLng, String nomeLocal, String descricaoLocal) async {
-    Marker marcador = Marker(
-      markerId: MarkerId("marcador-${latLng.latitude}-${latLng.longitude}"),
-      position: latLng,
-      infoWindow: InfoWindow(
-        title: nomeLocal,
-        snippet: descricaoLocal,
-      ),
-    );
-    setState(() {
-      _marcadores.add(marcador);
-    });
-
-    // Gravar no Firestore
-    Map<String, dynamic> local = Map();
-    local['titulo'] = nomeLocal;
-    local['descricao'] = descricaoLocal;
-    local['latitude'] = latLng.latitude;
-    local['longitude'] = latLng.longitude;
-    _locais.add(local);
-  }
-
 
   mostrarLocal(String? idLocal) async {
     DocumentSnapshot local = await _locais.doc(idLocal).get();
@@ -208,12 +196,12 @@ class MapSampleState extends State<MapSample> {
     String descricao = local.get("descricao");
     LatLng latLng = LatLng(local.get('latitude'), local.get('longitude'));
 
-    // Mover ao marcador selecionado
+    // Vai até o local escolhido
     CameraPosition newPosition = CameraPosition(target: latLng, zoom: 15);
     final GoogleMapController controller = await _controller.future;
     controller.animateCamera(CameraUpdate.newCameraPosition(newPosition));
 
-    // Todos os marcadores
+    // Todos os locais marcados
     _carregarMarcadores();
   }
 }
